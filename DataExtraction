@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  8 08:45:44 2020
+
+@author: Vinay Sesham
+"""
+
+import pandas as pd
+import numpy as np
+import datetime
+from sqlalchemy import create_engine
+
+
+def extract_data(base_path, file_format, start_date, current_date, df_all):
+    """Return a pandas dataframe with covid-19 data
+        
+       Args:
+           base url, file format (.csv), startdate, enddate and empty pandas dataframe
+        
+       Returns:
+           pandas dataframe with covid-19 data
+    """
+    while start_date < current_date:
+        df = pd.DataFrame()
+        
+        d1 = start_date.strftime('%m-%d-%Y')
+    
+        path1 = base_path
+        path2 = d1+file_format
+        
+        path = path1+path2
+        
+        df = pd.read_csv(path)
+        df_all = df_all.append(df)
+        start_date = start_date+datetime.timedelta(days=1)
+        
+    return df_all
+
+def wrangle_data(df_all, df_processed):
+    df_stg = pd.DataFrame(df_all)
+    
+    df_stg["Country/Region"] = np.where(df_stg["Country/Region"].isna(),df_stg["Country_Region"],df_stg["Country/Region"]).astype("str")
+    df_stg["Province/State"] = np.where(df_stg["Province/State"].isna(),df_stg["Province_State"],df_stg["Province/State"]).astype("str")
+    df_stg["Latitude"] = np.where(df_stg["Latitude"].isna(),df_stg["Lat"],df_stg["Latitude"])
+    df_stg["Longitude"] = np.where(df_stg["Longitude"].isna(),df_stg["Long_"],df_stg["Longitude"])
+    df_stg["Last_Update"] = np.where(df_stg["Last_Update"].isna(),df_stg["Last Update"],df_stg["Last_Update"])
+    df_stg['ObservationDate'] = df_stg['Last_Update'].apply(pd.to_datetime)
+    
+    df_stg =df_stg.drop(["Country_Region","Lat","Long_","Last_Update"],axis=1)
+    df_stg = df_stg.reindex(['Combined_Key','Province/State', 'Country/Region','Admin2','Latitude','Longitude','ObservationDate','Confirmed','Deaths','Recovered','Active'], axis="columns")
+    df_processed = df_stg
+    return df_processed
+
+def copy_data():
+    engine = create_engine("postgresql+psycopg2://postgres:Password@localhost/COVID")
+    conn = engine.connect()
+    result = pd.DataFrame()
+    engine.execute("drop view \"covid_daily_stats\"")
+    result = pd.read_sql("select * from \"covid_data\"", conn);
+    result.to_sql('covid_data_bkp', engine, if_exists='replace', index=False)
+    engine.execute("CREATE VIEW \"covid_daily_stats\" AS \
+                   SELECT \"Combined_Key\", \"Province/State\", \"Country/Region\", \"Admin2\", \
+                       \"Latitude\",\"Longitude\", \"ObservationDate\", \"ObservationDate\"::Date as \"Observation Date1\",\"Confirmed\", \"Deaths\", \
+                           \"Recovered\", \"Active\" \
+                    FROM \"covid_data_bkp\";")
+    conn.close()
+    
+def write_to_db(df_processed):
+    """
+    Instructions:
+        Replace PostgresUser and Password with the connection info for your postgres server 
+    """
+    engine = create_engine("postgresql+psycopg2://PostgresUser:Password@localhost/COVID")
+    conn = engine.connect()
+    df_processed.to_sql('covid_data', engine, if_exists='replace',index=False)
+    conn.close()
+    
+def main():
+    base_path = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
+    file_format = '.csv'
+    start_date = datetime.datetime.strptime('01-23-2020', "%m-%d-%Y")
+    current_date = datetime.datetime.today()+datetime.timedelta(days=-1)
+    df_all = pd.DataFrame()
+    df_processed = pd.DataFrame()
+    
+    df_all = extract_data(base_path, file_format, start_date, current_date, df_all)
+    df_processed = wrangle_data(df_all, df_processed)
+    copy_data()
+    write_to_db(df_processed)
+    
+    
+if __name__ == "__main__":
+    main()
