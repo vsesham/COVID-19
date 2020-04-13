@@ -48,8 +48,7 @@ def wrangle_data(df_all, df_processed):
     
     df_stg =df_stg.drop(["Country_Region","Lat","Long_","Last_Update"],axis=1)
     df_stg = df_stg.reindex(['Combined_Key','Province/State', 'Country/Region','Admin2','Latitude','Longitude','ObservationDate','Confirmed','Deaths','Recovered','Active'], axis="columns")
-    df_processed = df_stg
-    return df_processed
+    return df_stg
 
 def copy_data():
     """
