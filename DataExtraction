@@ -20,7 +20,7 @@ def extract_data(base_path, file_format, start_date, current_date, df_all):
        Returns:
            pandas dataframe with covid-19 data
     """
-    while start_date < current_date:
+    while start_date <= current_date:
         df = pd.DataFrame()
         
         d1 = start_date.strftime('%m-%d-%Y')
