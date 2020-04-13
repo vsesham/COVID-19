@@ -52,7 +52,12 @@ def wrangle_data(df_all, df_processed):
     return df_processed
 
 def copy_data():
-    engine = create_engine("postgresql+psycopg2://postgres:Password@localhost/COVID")
+    """
+    Instructions:
+        Replace PostgresUser and Password with the connection info for your postgres server. Also database and table/view name
+        can be replaced as you prefer.
+    """
+    engine = create_engine("postgresql+psycopg2://PostgresUser:Password@localhost/COVID")
     conn = engine.connect()
     result = pd.DataFrame()
     engine.execute("drop view \"covid_daily_stats\"")
@@ -68,7 +73,8 @@ def copy_data():
 def write_to_db(df_processed):
     """
     Instructions:
-        Replace PostgresUser and Password with the connection info for your postgres server 
+        Replace PostgresUser and Password with the connection info for your postgres server. Also database and table name
+        can be replaced as you prefer.
     """
     engine = create_engine("postgresql+psycopg2://PostgresUser:Password@localhost/COVID")
     conn = engine.connect()
